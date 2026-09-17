@@ -1,0 +1,124 @@
+"""Canonical bar validation that reports data facts rather than trading opinions."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+from datetime import timedelta
+from enum import Enum
+from typing import Iterable
+
+from .models import Bar, InstrumentId
+
+
+class ValidationCode(str, Enum):
+    INVALID_INTERVAL = "invalid_interval"
+    INVALID_OHLC = "invalid_ohlc"
+    NEGATIVE_VOLUME = "negative_volume"
+    DUPLICATE_BAR = "duplicate_bar"
+    MISSING_INTERVAL = "missing_interval"
+
+
+@dataclass(frozen=True, slots=True)
+class ValidationIssue:
+    code: ValidationCode
+    message: str
+    index: int | None = None
+
+
+def validate_bar(bar: Bar, *, index: int | None = None) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    if bar.end <= bar.start:
+        issues.append(
+            ValidationIssue(
+                ValidationCode.INVALID_INTERVAL,
+                "bar end must be later than bar start",
+                index,
+            )
+        )
+
+    if bar.high < max(bar.open, bar.close) or bar.low > min(bar.open, bar.close):
+        issues.append(
+            ValidationIssue(
+                ValidationCode.INVALID_OHLC,
+                "high/low do not contain both open and close",
+                index,
+            )
+        )
+    elif bar.high < bar.low:
+        issues.append(
+            ValidationIssue(
+                ValidationCode.INVALID_OHLC,
+                "high must not be lower than low",
+                index,
+            )
+        )
+
+    if bar.volume < 0:
+        issues.append(
+            ValidationIssue(
+                ValidationCode.NEGATIVE_VOLUME,
+                "volume must not be negative",
+                index,
+            )
+        )
+    return issues
+
+
+def _duplicate_issues(bars: list[Bar]) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    seen: dict[tuple[InstrumentId, object, object], int] = {}
+    for index, bar in enumerate(bars):
+        key = (bar.instrument, bar.start, bar.end)
+        previous = seen.get(key)
+        if previous is not None:
+            issues.append(
+                ValidationIssue(
+                    ValidationCode.DUPLICATE_BAR,
+                    f"bar duplicates index {previous}",
+                    index,
+                )
+            )
+        else:
+            seen[key] = index
+    return issues
+
+
+def _missing_interval_issues(
+    bars: list[Bar], expected_interval: timedelta
+) -> list[ValidationIssue]:
+    if expected_interval <= timedelta(0):
+        raise ValueError("expected_interval must be positive")
+
+    by_instrument: dict[InstrumentId, list[tuple[int, Bar]]] = {}
+    for index, bar in enumerate(bars):
+        by_instrument.setdefault(bar.instrument, []).append((index, bar))
+
+    issues: list[ValidationIssue] = []
+    for rows in by_instrument.values():
+        rows.sort(key=lambda pair: pair[1].start)
+        previous_start = None
+        for index, bar in rows:
+            if previous_start is not None and bar.start - previous_start > expected_interval:
+                expected = previous_start + expected_interval
+                issues.append(
+                    ValidationIssue(
+                        ValidationCode.MISSING_INTERVAL,
+                        f"expected next bar at {expected.isoformat()}, got {bar.start.isoformat()}",
+                        index,
+                    )
+                )
+            previous_start = bar.start
+    return issues
+
+
+def validate_bars(
+    bars: Iterable[Bar], *, expected_interval: timedelta | None = None
+) -> list[ValidationIssue]:
+    materialized = list(bars)
+    issues: list[ValidationIssue] = []
+    for index, bar in enumerate(materialized):
+        issues.extend(validate_bar(bar, index=index))
+    issues.extend(_duplicate_issues(materialized))
+    if expected_interval is not None:
+        issues.extend(_missing_interval_issues(materialized, expected_interval))
+    return issues
