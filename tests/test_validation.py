@@ -43,3 +43,20 @@ def test_detects_duplicate_and_missing_intervals() -> None:
     codes = [issue.code for issue in issues]
     assert ValidationCode.DUPLICATE_BAR in codes
     assert ValidationCode.MISSING_INTERVAL in codes
+
+
+def test_detects_bar_duration_that_disagrees_with_expected_interval() -> None:
+    start = datetime(2026, 1, 2, 14, 30, tzinfo=UTC)
+    bar = Bar(
+        instrument=INSTRUMENT,
+        start=start,
+        end=start + timedelta(minutes=5),
+        open=Decimal("100"),
+        high=Decimal("101"),
+        low=Decimal("99"),
+        close=Decimal("100.5"),
+        volume=Decimal("10"),
+    )
+
+    issues = validate_bars([bar], expected_interval=timedelta(minutes=1))
+    assert [issue.code for issue in issues] == [ValidationCode.UNEXPECTED_DURATION]
