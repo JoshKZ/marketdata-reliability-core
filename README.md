@@ -20,7 +20,7 @@ The library does **not** download market data, place orders, implement signals, 
 
 ## Status
 
-`0.1.0a1` is an early public alpha focused on hardening a small API before `v0.1.0`. The intended `v0.1.0` package-root API is documented in [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md).
+`v0.1.0` defines the first deliberately small public API. The supported package-root surface is documented in [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md); internal helpers are not part of the compatibility contract.
 
 ## Quick start
 
