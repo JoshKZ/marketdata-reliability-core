@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 
 import pytest
 
-from marketdata_reliability import build_lineage
+from marketdata_reliability import LineageRecord, build_lineage
 
 UTC = timezone.utc
 
@@ -56,4 +56,15 @@ def test_lineage_rejects_duplicate_sources_and_naive_time() -> None:
             transformation="aggregate:v1",
             source_observation_ids=["obs-1"],
             created_at=datetime(2026, 1, 2, 14, 32),
+        )
+
+
+def test_direct_lineage_construction_cannot_bypass_basic_invariants() -> None:
+    with pytest.raises(ValueError, match="lowercase SHA-256"):
+        LineageRecord(
+            lineage_id="not-a-digest",
+            output_key="bar-1",
+            transformation="aggregate:v1",
+            source_observation_ids=("obs-1",),
+            created_at=datetime(2026, 1, 2, 14, 32, tzinfo=UTC),
         )
