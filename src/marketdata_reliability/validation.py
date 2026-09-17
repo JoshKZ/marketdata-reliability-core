@@ -2,16 +2,17 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
-from typing import Iterable
 
 from .models import Bar, InstrumentId
 
 
 class ValidationCode(str, Enum):
     INVALID_INTERVAL = "invalid_interval"
+    UNEXPECTED_DURATION = "unexpected_duration"
     INVALID_OHLC = "invalid_ohlc"
     NEGATIVE_VOLUME = "negative_volume"
     DUPLICATE_BAR = "duplicate_bar"
@@ -83,12 +84,28 @@ def _duplicate_issues(bars: list[Bar]) -> list[ValidationIssue]:
     return issues
 
 
+def _duration_issues(
+    bars: list[Bar], expected_interval: timedelta
+) -> list[ValidationIssue]:
+    issues: list[ValidationIssue] = []
+    for index, bar in enumerate(bars):
+        if bar.end > bar.start and bar.end - bar.start != expected_interval:
+            issues.append(
+                ValidationIssue(
+                    ValidationCode.UNEXPECTED_DURATION,
+                    (
+                        f"expected bar duration {expected_interval}, "
+                        f"got {bar.end - bar.start}"
+                    ),
+                    index,
+                )
+            )
+    return issues
+
+
 def _missing_interval_issues(
     bars: list[Bar], expected_interval: timedelta
 ) -> list[ValidationIssue]:
-    if expected_interval <= timedelta(0):
-        raise ValueError("expected_interval must be positive")
-
     by_instrument: dict[InstrumentId, list[tuple[int, Bar]]] = {}
     for index, bar in enumerate(bars):
         by_instrument.setdefault(bar.instrument, []).append((index, bar))
@@ -118,7 +135,11 @@ def validate_bars(
     issues: list[ValidationIssue] = []
     for index, bar in enumerate(materialized):
         issues.extend(validate_bar(bar, index=index))
+
     issues.extend(_duplicate_issues(materialized))
     if expected_interval is not None:
+        if expected_interval <= timedelta(0):
+            raise ValueError("expected_interval must be positive")
+        issues.extend(_duration_issues(materialized, expected_interval))
         issues.extend(_missing_interval_issues(materialized, expected_interval))
     return issues
