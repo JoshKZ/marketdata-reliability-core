@@ -1,6 +1,8 @@
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 
+import pytest
+
 from marketdata_reliability import Bar, InstrumentId, ValidationCode, validate_bars
 
 UTC = timezone.utc
@@ -60,3 +62,8 @@ def test_detects_bar_duration_that_disagrees_with_expected_interval() -> None:
 
     issues = validate_bars([bar], expected_interval=timedelta(minutes=1))
     assert [issue.code for issue in issues] == [ValidationCode.UNEXPECTED_DURATION]
+
+
+def test_expected_interval_must_be_positive() -> None:
+    with pytest.raises(ValueError, match="expected_interval must be positive"):
+        validate_bars([make_bar(30)], expected_interval=timedelta(0))
