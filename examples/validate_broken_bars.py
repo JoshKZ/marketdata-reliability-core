@@ -5,7 +5,6 @@ from decimal import Decimal
 
 from marketdata_reliability import Bar, InstrumentId, validate_bars
 
-
 utc = timezone.utc
 instrument = InstrumentId("DEMO", "ABC", "equity")
 

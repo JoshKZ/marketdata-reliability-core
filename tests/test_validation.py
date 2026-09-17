@@ -3,7 +3,6 @@ from decimal import Decimal
 
 from marketdata_reliability import Bar, InstrumentId, ValidationCode, validate_bars
 
-
 UTC = timezone.utc
 INSTRUMENT = InstrumentId("XNAS", "DEMO", "equity")
 
