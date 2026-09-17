@@ -20,7 +20,7 @@ The library does **not** download market data, place orders, implement signals, 
 
 ## Status
 
-`0.1.0a1` is an early public alpha focused on hardening a small API before `v0.1.0`.
+`0.1.0a1` is an early public alpha focused on hardening a small API before `v0.1.0`. The intended `v0.1.0` package-root API is documented in [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md).
 
 ## Quick start
 
@@ -143,6 +143,8 @@ mypy src
 pytest
 python -m build
 ```
+
+CI also builds the wheel and installs it into a clean environment before running the README-style normalization/validation smoke path.
 
 See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines and [`SECURITY.md`](SECURITY.md) for security reporting.
 
