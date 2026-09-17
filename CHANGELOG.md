@@ -10,6 +10,8 @@ All notable changes will be documented in this file.
 - Deterministic multi-source lineage records for derived market-data records.
 - Edge-case tests for timezone awareness, deterministic observation fingerprints, lineage identity, and normalization failures.
 - Validation for bar durations that disagree with the declared expected interval.
+- Documented and regression-tested the intended `v0.1.0` package-root public API.
+- Clean-wheel installation smoke test that exercises the README normalization/validation path.
 
 ### Changed
 

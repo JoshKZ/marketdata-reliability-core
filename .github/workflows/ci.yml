@@ -33,3 +33,50 @@ jobs:
         run: pytest
       - name: Build
         run: python -m build
+
+  package-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Build wheel
+        run: |
+          python -m pip install --upgrade pip build
+          python -m build --wheel
+      - name: Install wheel in a clean environment
+        run: |
+          python -m venv /tmp/mdr-smoke
+          /tmp/mdr-smoke/bin/python -m pip install dist/*.whl
+      - name: Run installed-package smoke test
+        run: |
+          /tmp/mdr-smoke/bin/python - <<'PY'
+          from datetime import datetime, timedelta, timezone
+
+          from marketdata_reliability import BarFieldMap, InstrumentId, normalize_bar, validate_bars
+
+          utc = timezone.utc
+          instrument = InstrumentId("XNAS", "DEMO", "equity")
+          start = datetime(2026, 1, 2, 14, 30, tzinfo=utc)
+          bar = normalize_bar(
+              {
+                  "px_open": "100.00",
+                  "px_high": "101.00",
+                  "px_low": "99.00",
+                  "px_close": "100.50",
+                  "qty": 1200,
+              },
+              instrument=instrument,
+              start=start,
+              end=start + timedelta(minutes=1),
+              fields=BarFieldMap(
+                  open="px_open",
+                  high="px_high",
+                  low="px_low",
+                  close="px_close",
+                  volume="qty",
+              ),
+          )
+          assert validate_bars([bar], expected_interval=timedelta(minutes=1)) == []
+          PY
