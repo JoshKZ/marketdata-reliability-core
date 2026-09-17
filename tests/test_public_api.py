@@ -1,6 +1,3 @@
-import marketdata_reliability as mdr
-
-
 EXPECTED_PUBLIC_API = {
     "Bar",
     "BarFieldMap",
@@ -28,6 +25,8 @@ EXPECTED_PUBLIC_API = {
 
 
 def test_package_root_exports_frozen_v0_1_api() -> None:
+    import marketdata_reliability as mdr
+
     assert set(mdr.__all__) == EXPECTED_PUBLIC_API
     for name in EXPECTED_PUBLIC_API:
         assert getattr(mdr, name) is not None
