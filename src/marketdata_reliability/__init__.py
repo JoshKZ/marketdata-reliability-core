@@ -1,5 +1,6 @@
 """Public API for Market Data Reliability Core."""
 
+from .audit import InstrumentReport, ValidationReport, ValidationWindow, WindowReport, audit_bars
 from .correction import (
     CorrectionPreconditionFailed,
     CorrectionProposal,
@@ -15,7 +16,13 @@ from .models import Bar, InstrumentId, SourceObservation, build_observation
 from .normalization import BarFieldMap, NormalizationError, normalize_bar
 from .point_in_time import UniverseInterval, members_at
 from .provenance import LineageRecord, build_lineage
-from .validation import ValidationCode, ValidationIssue, validate_bar, validate_bars
+from .validation import (
+    ValidationCode,
+    ValidationIssue,
+    ValidationSeverity,
+    validate_bar,
+    validate_bars,
+)
 
 __all__ = [
     "Bar",
@@ -26,6 +33,7 @@ __all__ = [
     "InMemoryObservationStore",
     "InsertDisposition",
     "InstrumentId",
+    "InstrumentReport",
     "LineageRecord",
     "NormalizationError",
     "ObservationCollisionError",
@@ -33,6 +41,11 @@ __all__ = [
     "UniverseInterval",
     "ValidationCode",
     "ValidationIssue",
+    "ValidationReport",
+    "ValidationSeverity",
+    "ValidationWindow",
+    "WindowReport",
+    "audit_bars",
     "build_lineage",
     "build_observation",
     "members_at",

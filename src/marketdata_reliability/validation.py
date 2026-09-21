@@ -4,7 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Iterable
 from dataclasses import dataclass
-from datetime import timedelta
+from datetime import datetime, timedelta
+from decimal import Decimal
 from enum import Enum
 
 from .models import Bar, InstrumentId
@@ -17,6 +18,16 @@ class ValidationCode(str, Enum):
     NEGATIVE_VOLUME = "negative_volume"
     DUPLICATE_BAR = "duplicate_bar"
     MISSING_INTERVAL = "missing_interval"
+    NON_FINITE_VALUE = "non_finite_value"
+    INVALID_NUMERIC_TYPE = "invalid_numeric_type"
+    OUTSIDE_WINDOW = "outside_window"
+    MISALIGNED_BAR = "misaligned_bar"
+    CONFLICTING_DUPLICATE = "conflicting_duplicate"
+
+
+class ValidationSeverity(str, Enum):
+    WARNING = "warning"
+    ERROR = "error"
 
 
 @dataclass(frozen=True, slots=True)
@@ -24,6 +35,10 @@ class ValidationIssue:
     code: ValidationCode
     message: str
     index: int | None = None
+    severity: ValidationSeverity = ValidationSeverity.ERROR
+    instrument: InstrumentId | None = None
+    window_index: int | None = None
+    timestamp: datetime | None = None
 
 
 def validate_bar(bar: Bar, *, index: int | None = None) -> list[ValidationIssue]:
@@ -37,31 +52,27 @@ def validate_bar(bar: Bar, *, index: int | None = None) -> list[ValidationIssue]
             )
         )
 
-    if bar.high < max(bar.open, bar.close) or bar.low > min(bar.open, bar.close):
-        issues.append(
-            ValidationIssue(
-                ValidationCode.INVALID_OHLC,
-                "high/low do not contain both open and close",
-                index,
-            )
-        )
-    elif bar.high < bar.low:
-        issues.append(
-            ValidationIssue(
-                ValidationCode.INVALID_OHLC,
-                "high must not be lower than low",
-                index,
-            )
-        )
-
-    if bar.volume < 0:
-        issues.append(
-            ValidationIssue(
-                ValidationCode.NEGATIVE_VOLUME,
-                "volume must not be negative",
-                index,
-            )
-        )
+    finite: dict[str, Decimal] = {}
+    for name in ("open", "high", "low", "close", "volume"):
+        value = getattr(bar, name)
+        if not isinstance(value, Decimal):
+            issues.append(ValidationIssue(ValidationCode.INVALID_NUMERIC_TYPE,
+                                          f"{name} must be Decimal; use normalize_bar for coercion", index))
+        elif not value.is_finite():
+            issues.append(ValidationIssue(ValidationCode.NON_FINITE_VALUE,
+                                          f"{name} must be finite", index))
+        else:
+            finite[name] = value
+    if all(name in finite for name in ("open", "high", "low", "close")):
+        if bar.high < max(bar.open, bar.close) or bar.low > min(bar.open, bar.close):
+            issues.append(ValidationIssue(ValidationCode.INVALID_OHLC,
+                                          "high/low do not contain both open and close", index))
+        elif bar.high < bar.low:
+            issues.append(ValidationIssue(ValidationCode.INVALID_OHLC,
+                                          "high must not be lower than low", index))
+    if "volume" in finite and bar.volume < 0:
+        issues.append(ValidationIssue(ValidationCode.NEGATIVE_VOLUME,
+                                      "volume must not be negative", index))
     return issues
 
 

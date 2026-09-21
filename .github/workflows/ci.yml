@@ -36,11 +36,15 @@ jobs:
 
   package-smoke:
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.12", "3.13"]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: ${{ matrix.python-version }}
       - name: Build wheel
         run: |
           python -m pip install --upgrade pip build
@@ -48,14 +52,16 @@ jobs:
       - name: Install wheel in a clean environment
         run: |
           python -m venv /tmp/mdr-smoke
-          /tmp/mdr-smoke/bin/python -m pip install dist/*.whl
+          /tmp/mdr-smoke/bin/python -m pip install --no-deps dist/*.whl
       - name: Run installed-package smoke test
         run: |
-          /tmp/mdr-smoke/bin/python - <<'PY'
+          /tmp/mdr-smoke/bin/python -I - <<'PY'
           from datetime import datetime, timedelta, timezone
+          from importlib.metadata import version
 
           from marketdata_reliability import BarFieldMap, InstrumentId, normalize_bar, validate_bars
 
+          assert version("marketdata-reliability-core") == "0.2.0"
           utc = timezone.utc
           instrument = InstrumentId("XNAS", "DEMO", "equity")
           start = datetime(2026, 1, 2, 14, 30, tzinfo=utc)
@@ -80,3 +86,5 @@ jobs:
           )
           assert validate_bars([bar], expected_interval=timedelta(minutes=1)) == []
           PY
+      - name: Run installed session-audit example
+        run: /tmp/mdr-smoke/bin/python -I "$GITHUB_WORKSPACE/examples/audit_two_sessions.py"

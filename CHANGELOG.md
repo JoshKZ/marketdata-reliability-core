@@ -4,6 +4,31 @@ All notable changes will be documented in this file.
 
 ## Unreleased
 
+## 0.2.0 - 2026-09-21
+
+### Added
+
+- Caller-declared, half-open ValidationWindow grids and session-aware audit_bars.
+- Immutable dataset, instrument, and window summaries with weighted coverage and exact missing starts.
+- Leading/trailing/empty-window detection without cross-session false gaps.
+- Outside-window, grid-misalignment, and conflicting-duplicate diagnostics.
+- Explicit ERROR/WARNING overrides that do not alter findings or coverage counts.
+- UTC elapsed-time handling, DST regression tests, and an explicit expected-grid expansion limit.
+- Synthetic two-session demo, audit contract, and clean-wheel audit smoke tests on Python 3.11-3.13.
+
+### Fixed
+
+- Direct Bar validation reports non-finite Decimal values and invalid numeric types instead of
+  crashing during NaN comparison or accepting non-canonical numeric values.
+
+### Compatibility
+
+- All 22 original package-root names and legacy validation call signatures remain.
+- ValidationIssue appends optional severity, instrument, window_index, and timestamp fields;
+  dataclass serializers must account for them. Five additional validation codes are available.
+- Legacy validate_bars remains calendar-unaware. Use audit_bars for scoped coverage.
+- Observation IDs, lineage hashes, correction behavior, and membership logic are unchanged.
+
 ## 0.1.0 - 2026-09-17
 
 ### Added
