@@ -2,139 +2,71 @@
 
 Provider-agnostic reliability primitives for financial market data.
 
-Market-data pipelines usually fail in boring ways: duplicate observations, missing bars, silent source rewrites, ambiguous corrections, present-day universes leaking into historical tests, and provider-specific fields escaping into downstream research. This project focuses on those reliability problems before data reaches a backtest, model, dashboard, or trading system.
+Validate market-data evidence before it reaches research, backtests, or dashboards.
+The library provides source observations, normalization, validation, lineage,
+historical membership, and correction precondition checks without a vendor SDK
+or trading decision logic. Runtime dependencies: Python's standard library only.
 
-## What it provides
+## New in 0.2.0: session-aware dataset audit
 
-The public core is intentionally small:
-
-- **Immutable source observations** with deterministic fingerprints.
-- **Idempotent ingestion** that distinguishes replayed observations from collisions.
-- **Explicit normalization** from provider-shaped mappings into canonical OHLCV bars.
-- **Data-quality validation** for OHLC consistency, volume, duplicates, missing intervals, and bar duration.
-- **Deterministic lineage records** linking derived records to one or more source observations.
-- **Point-in-time universe semantics** to help prevent survivorship bias.
-- **Safe historical-correction preconditions** that require expected-vs-observed agreement before a caller applies a change.
-
-The library does **not** download market data, place orders, implement signals, provide a backtesting engine, or embed a production database schema.
-
-## Status
-
-`v0.1.0` defines the first deliberately small public API. The supported package-root surface is documented in [`docs/PUBLIC_API.md`](docs/PUBLIC_API.md); internal helpers are not part of the compatibility contract.
-
-## Quick start
-
-Requires Python 3.11+.
-
-```bash
-python -m pip install -e ".[dev]"
-pytest
-```
-
-A minimal normalization and validation example:
+Declare the windows in which bars should exist. Audit missing slots, duplicates,
+OHLCV problems, duration, and alignment without treating lunch breaks or overnight
+closures as missing data. The caller owns the trading calendar.
 
 ```python
-from datetime import datetime, timedelta, timezone
-
+from datetime import UTC, datetime, timedelta
 from marketdata_reliability import (
-    BarFieldMap,
-    InstrumentId,
-    normalize_bar,
-    validate_bars,
+    InstrumentId, ValidationWindow, audit_bars, normalize_bar,
 )
 
-utc = timezone.utc
-instrument = InstrumentId(market="XNAS", symbol="DEMO", asset_class="equity")
-start = datetime(2026, 1, 2, 14, 30, tzinfo=utc)
-
-provider_record = {
-    "px_open": "100.00",
-    "px_high": "101.00",
-    "px_low": "99.00",
-    "px_close": "100.50",
-    "qty": 1200,
-}
-fields = BarFieldMap(
-    open="px_open",
-    high="px_high",
-    low="px_low",
-    close="px_close",
-    volume="qty",
-)
-bar = normalize_bar(
-    provider_record,
-    instrument=instrument,
-    start=start,
-    end=start + timedelta(minutes=1),
-    fields=fields,
-    source_observation_id="obs-123",
-)
-
-assert validate_bars([bar], expected_interval=timedelta(minutes=1)) == []
+instrument = InstrumentId("SYNTH", "DEMO", "equity")
+start = datetime(2026, 1, 2, 9, tzinfo=UTC)
+minute = timedelta(minutes=1)
+window = ValidationWindow(instrument, start, start + 3 * minute, minute)
+rows = [
+    normalize_bar(
+        {"open": "100", "high": "101", "low": "99", "close": "100.5", "volume": 10},
+        instrument=instrument, start=start + i * minute, end=start + (i + 1) * minute,
+    )
+    for i in (0, 2)
+]
+report = audit_bars(rows, windows=[window])
+assert report.expected_bars == 3
+assert report.covered_bars == 2
+assert report.missing_timestamps[instrument] == (start + minute,)
+assert not report.valid
 ```
 
-Normalization deliberately leaves timestamp parsing to the adapter or caller because provider timestamps can carry market-specific ambiguity. Canonical numeric values accept `Decimal`, integers, or decimal strings; binary floats are rejected rather than silently importing precision artifacts.
+`report.windows` and `report.by_instrument` expose per-window and per-instrument
+summaries. `count_by_code`, `error_count`, and `warning_count` support pipeline
+checks. Missing timestamps are UTC bar starts keyed by instrument.
 
-To see the validator catch intentionally broken data:
+**Coverage measures presence, not correctness.** A bar with invalid OHLCV can
+occupy its expected slot and still fail validation. Duplicates do not increase
+coverage. `valid` means no ERROR remains under the chosen policy; explicit WARNING
+overrides do not repair the data or erase missing counts.
+
+See [the audit contract](docs/AUDIT.md) for half-open boundaries, dense-grid
+assumptions, severity policy, timezones, and resource limits.
+
+## Installation and offline examples
+
+Requires Python 3.11+. Install from this repository; this guide does not assume
+that a package has been published to PyPI.
 
 ```bash
+git clone https://github.com/JoshKZ/marketdata-reliability-core.git
+cd marketdata-reliability-core
+python -m pip install .
+python examples/audit_two_sessions.py
 python examples/validate_broken_bars.py
 ```
 
-## Reliability model
+The two-session example is entirely synthetic and asserts its output: 10 expected
+slots, 9 input rows, 8 covered slots, 2 missing, 1 duplicate, and 4 errors including
+one invalid high. It needs no account, network feed, database, or API key.
 
-The intended flow is:
-
-```text
-provider / file / feed
-        |
-        v
-immutable SourceObservation
-        |
-        v
-explicit normalization contract
-        |
-        v
-canonical Bar or other domain record
-        |
-        +----> validation
-        |
-        +----> deterministic provenance / lineage
-        |
-        +----> point-in-time membership checks
-        |
-        +----> correction preconditions when history must change
-```
-
-A repeated ingestion should be safe when it replays the same immutable observation. A historical correction should never be authorized merely because a caller asks for a new value; the current observed value must still match the proposal's expected value.
-
-## Design principles
-
-1. **Raw evidence is immutable.** Fix history with explicit correction records rather than silently rewriting source observations.
-2. **Provider code stays at the edge.** The core does not depend on a broker SDK, exchange SDK, proprietary binary, or vendor field naming convention.
-3. **Time is part of identity.** Market/event time and observation time are distinct concepts and must be timezone-aware.
-4. **Point-in-time truth beats today's convenience.** Current listings are not a valid historical universe.
-5. **Idempotency is mechanical.** Re-running a pipeline should not create silent duplicates.
-6. **Precision choices are explicit.** Canonical normalization does not silently accept binary floats for financial values.
-7. **Validation reports facts, not trading opinions.** No alpha, signal, position, or execution logic belongs here.
-
-## Non-goals
-
-The core deliberately excludes:
-
-- brokerage or exchange login flows;
-- proprietary SDK code or copied vendor documentation;
-- order submission, cancellation, portfolio, or account functionality;
-- strategy, factor, alpha, ranking, sizing, or arbitrage logic;
-- production connection strings or production database topology;
-- a universal market-calendar implementation;
-- a full event store or backtesting engine.
-
-## Repository safety boundary
-
-Public-source extraction rules are documented in [`docs/OSS_EXTRACTION_BOUNDARY.md`](docs/OSS_EXTRACTION_BOUNDARY.md). In short: generic reliability concepts are welcome; credentials, proprietary material, production topology, private data, and trading decision logic are not.
-
-## Development
+For development, use a virtual environment and install the development extras:
 
 ```bash
 python -m pip install -e ".[dev]"
@@ -144,9 +76,45 @@ pytest
 python -m build
 ```
 
-CI also builds the wheel and installs it into a clean environment before running the README-style normalization/validation smoke path.
+CI runs lint, strict type checking, all tests, and builds on Python 3.11, 3.12,
+and 3.13. It also installs a wheel into a fresh environment and runs the legacy
+normalization path and the new session-audit example using isolated Python.
 
-See [`CONTRIBUTING.md`](CONTRIBUTING.md) for contribution guidelines and [`SECURITY.md`](SECURITY.md) for security reporting.
+## Existing core capabilities
+
+- **Source observations** with deterministic fingerprints and replay-safe
+  in-memory ingestion that distinguishes duplicates from identity collisions.
+- **Explicit normalization** using `BarFieldMap` and `normalize_bar` to translate
+  provider-shaped mappings into canonical OHLCV bars. Numeric inputs accept
+  Decimal, integers, and decimal strings; binary floats and non-finite values
+  are rejected. Timestamp parsing remains the caller's responsibility.
+- **Validation and provenance:** the existing list-returning `validate_bar` and
+  `validate_bars` APIs, plus deterministic multi-source lineage records.
+- **Historical membership and correction preconditions:** `members_at` checks
+  supplied historical intervals; `verify_correction` checks expected versus
+  observed values. It does not persist or atomically apply a correction.
+
+The package-root import surface is documented in [PUBLIC_API.md](docs/PUBLIC_API.md).
+The 0.2.0 surface preserves all 0.1.0 exported names and adds six audit names.
+`validate_bars(expected_interval=...)` remains calendar-unaware; use `audit_bars`
+for explicitly scoped session coverage. Added optional `ValidationIssue` fields
+are documented for consumers that serialize dataclasses.
+
+## Scope and safety
+
+The core does not download market data, place orders, select instruments, generate
+signals, or provide a backtesting engine. It does not infer exchange calendars,
+choose a preferred provider, silently repair data, or decide which price is true.
+Audit windows must describe a comparable dense bar series, including the caller's
+no-trade-bar policy. Historical membership is only as complete as supplied records.
+
+Proprietary SDK material, credentials, private datasets, production topology, and
+trading strategies stay outside this repository. Checkpoint/recovery orchestration,
+provider adapters, real-time Quote/Trade models, and PyPI publishing are not part
+of this version.
+
+See [OSS_EXTRACTION_BOUNDARY.md](docs/OSS_EXTRACTION_BOUNDARY.md),
+[CONTRIBUTING.md](CONTRIBUTING.md), and [SECURITY.md](SECURITY.md).
 
 ## License
 
