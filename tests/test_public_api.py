@@ -9,20 +9,22 @@ V0_2_ADDITIONS = {
     "InstrumentReport", "ValidationReport", "ValidationSeverity", "ValidationWindow",
     "WindowReport", "audit_bars",
 }
+V0_3_ADDITIONS = {"report_to_dict", "report_to_json"}
 
 
-def test_package_root_exports_frozen_v0_1_api() -> None:
+def test_package_root_preserves_all_previous_exports() -> None:
     import marketdata_reliability as mdr
 
-    assert V0_1_PUBLIC_API <= set(mdr.__all__)
-    for name in V0_1_PUBLIC_API:
+    previous = V0_1_PUBLIC_API | V0_2_ADDITIONS
+    assert previous <= set(mdr.__all__)
+    for name in previous:
         assert getattr(mdr, name) is not None
 
 
-def test_package_root_exports_exact_v0_2_api() -> None:
+def test_package_root_exports_exact_v0_3_api() -> None:
     import marketdata_reliability as mdr
 
     assert len(mdr.__all__) == len(set(mdr.__all__))
-    assert set(mdr.__all__) == V0_1_PUBLIC_API | V0_2_ADDITIONS
-    for name in V0_2_ADDITIONS:
-        assert getattr(mdr, name) is not None
+    assert set(mdr.__all__) == V0_1_PUBLIC_API | V0_2_ADDITIONS | V0_3_ADDITIONS
+    for name in V0_3_ADDITIONS:
+        assert callable(getattr(mdr, name))

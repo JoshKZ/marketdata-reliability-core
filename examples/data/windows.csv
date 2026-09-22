@@ -1,0 +1,3 @@
+market,symbol,asset_class,start,end,interval_seconds
+SYNTH,DEMO,equity,2026-01-02T09:00:00Z,2026-01-02T09:03:00Z,60
+SYNTH,DEMO,equity,2026-01-02T13:00:00Z,2026-01-02T13:02:00Z,60
