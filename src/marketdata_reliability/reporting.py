@@ -73,12 +73,12 @@ def report_to_dict(report: ValidationReport) -> dict[str, object]:
             "missing_timestamps": [_timestamp(t) for t in item.missing_timestamps],
         })
     instruments: list[dict[str, object]] = []
-    for item in sorted(report.instruments, key=lambda entry: entry.instrument):
+    for instrument_report in sorted(report.instruments, key=lambda entry: entry.instrument):
         instruments.append({
-            "instrument": _instrument(item.instrument),
-            "summary": _summary(item),
-            "outside_window_bars": item.outside_window_bars,
-            "window_indices": [window.window_index for window in item.windows],
+            "instrument": _instrument(instrument_report.instrument),
+            "summary": _summary(instrument_report),
+            "outside_window_bars": instrument_report.outside_window_bars,
+            "window_indices": [window.window_index for window in instrument_report.windows],
         })
     return {
         "schema_version": "1.0",
