@@ -15,10 +15,10 @@ from marketdata_reliability import (
 )
 
 T = datetime(2026, 1, 2, 9, tzinfo=UTC)
-I = InstrumentId("SYNTH", "DEMO", "equity")
+INSTRUMENT = InstrumentId("SYNTH", "DEMO", "equity")
 
 
-def bar(instrument=I, start=T, end=None, close=Decimal("100")):
+def bar(instrument=INSTRUMENT, start=T, end=None, close=Decimal("100")):
     return Bar(instrument, start, end or start + timedelta(minutes=1),
                Decimal("100"), Decimal("101"), Decimal("99"), close, Decimal("10"))
 
@@ -26,7 +26,7 @@ def bar(instrument=I, start=T, end=None, close=Decimal("100")):
 def test_json_projection_is_detached_and_deterministic():
     import json
 
-    report = audit_bars([bar()], windows=[ValidationWindow(I, T, T + timedelta(minutes=3),
+    report = audit_bars([bar()], windows=[ValidationWindow(INSTRUMENT, T, T + timedelta(minutes=3),
                                                          timedelta(minutes=1))])
     document = report_to_dict(report)
     assert document["schema_version"] == "1.0"
@@ -51,7 +51,7 @@ def test_coverage_one_does_not_hide_invalid_prices():
     import json
 
     report = audit_bars([bar(close=Decimal("NaN"))], windows=[
-        ValidationWindow(I, T, T + timedelta(minutes=1), timedelta(minutes=1)),
+        ValidationWindow(INSTRUMENT, T, T + timedelta(minutes=1), timedelta(minutes=1)),
     ])
     text = report_to_json(report)
     data = json.loads(text)
@@ -64,7 +64,7 @@ def test_coverage_one_does_not_hide_invalid_prices():
 def test_unexpected_instrument_has_null_coverage_and_structured_identity():
     unexpected = InstrumentId("OTHER", "DEMO", "equity")
     report = audit_bars([bar(unexpected)], windows=[
-        ValidationWindow(I, T, T + timedelta(minutes=1), timedelta(minutes=1)),
+        ValidationWindow(INSTRUMENT, T, T + timedelta(minutes=1), timedelta(minutes=1)),
     ])
     data = report_to_dict(report)
     item = next(x for x in data["instruments"] if x["instrument"]["market"] == "OTHER")
@@ -89,7 +89,7 @@ def test_delimiter_collisions_do_not_collapse_instrument_objects():
 
 def test_warn_policy_is_preserved_in_json():
     report = audit_bars([], windows=[
-        ValidationWindow(I, T, T + timedelta(minutes=1), timedelta(minutes=1)),
+        ValidationWindow(INSTRUMENT, T, T + timedelta(minutes=1), timedelta(minutes=1)),
     ], severity_overrides={ValidationCode.MISSING_INTERVAL: ValidationSeverity.WARNING})
     data = report_to_dict(report)
     assert data["summary"]["valid"] is True
@@ -113,7 +113,7 @@ def test_exact_microsecond_intervals_and_unicode_are_json_safe():
 
 @pytest.mark.parametrize("indent", [-1, 9, True, 1.5, "2"])
 def test_indent_rejects_invalid_configuration(indent):
-    report = audit_bars([], windows=[ValidationWindow(I, T, T + timedelta(minutes=1),
+    report = audit_bars([], windows=[ValidationWindow(INSTRUMENT, T, T + timedelta(minutes=1),
                                                     timedelta(minutes=1))])
     with pytest.raises(ValueError):
         report_to_json(report, indent=indent)

@@ -4,6 +4,32 @@ All notable changes will be documented in this file.
 
 ## Unreleased
 
+## 0.3.0 - 2026-09-22
+
+### Added
+
+- Offline `mdr-audit` and `python -m marketdata_reliability` commands for local bars/windows CSV.
+- Versioned, detached JSON reporting with `report_to_dict` and `report_to_json`.
+- Explicit exit codes for accepted audits, completed audits with rejected findings, and incomplete input/configuration/output handling.
+- Strict UTF-8 CSV columns, explicit-offset timestamps, exact decimal parsing, bounded input, sanitized parser diagnostics, and no-overwrite output creation.
+- Synthetic clean/broken CSV fixtures, Windows/Linux onboarding, JSON schema contract, maintenance evidence, and bug-report guidance.
+- Windows Python 3.13 verification in addition to Linux Python 3.11-3.13.
+- Source-distribution content checks and clean installed-wheel smoke tests for both CLI entry points and legacy APIs.
+- Time-limited CI distribution artifacts with wheel, source archive, checksums, and a synthetic JSON report.
+
+### Changed
+
+- Preserve all 28 previous root exports and add two serializers; core validation, audit, observation identity, lineage, correction, and membership implementations remain unchanged.
+- Use SPDX license metadata and setuptools >=77.0.3 for builds; retain zero third-party runtime dependencies.
+- Pin CI actions to verified commit IDs, use read-only repository permissions, and disable persisted checkout credentials.
+- Include documentation, examples, and tests in source distributions. Development extras include timezone data for Windows tests.
+
+### Limits
+
+- No PyPI publication, provider SDK, live data integration, trading features, private infrastructure, or independent security-audit claim.
+- CLI is bounded batch processing, not streaming or a hostile-filesystem sandbox. Output writes are exclusive but not durable atomic transactions.
+- Reports retain instrument identifiers and messages; inspect before sharing. Coverage still measures presence, not correctness.
+
 ## 0.2.0 - 2026-09-21
 
 ### Added

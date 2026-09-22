@@ -29,27 +29,47 @@ See [AUDIT.md](AUDIT.md) for full count, boundary, issue attribution, severity,
 ordering, and resource semantics. Report objects are results, not authorization
 certificates or evidence that a persistence operation occurred.
 
+## Added in 0.3.0
+
+- `report_to_dict(report: ValidationReport) -> dict[str, object]` returns a detached,
+  JSON-compatible projection with schema version `1.0`.
+- `report_to_json(report: ValidationReport, *, indent: int | None = 2) -> str` uses
+  the same projection, sorted keys, ASCII escaping, and no non-finite JSON numbers.
+  Indentation must be None or an integer between 0 and 8. No newline is appended.
+
+All 28 previous names remain; the complete root surface now contains 30 names
+and is regression-tested. The new serializers do not mutate, authenticate, or
+revalidate the supplied report. See [JSON_REPORT.md](JSON_REPORT.md) for the wire
+format; do not depend on `dataclasses.asdict` as a public serialization contract.
+
+The new `mdr-audit` executable and `python -m marketdata_reliability` share the
+[documented CLI contract](QUICKSTART.md), including exit codes and strict CSV
+formats. CSV/parser helpers are private, not new supported Python imports.
+The CLI's whole-second windows and smaller default limits do not change the
+existing Python API's timedelta support or `max_expected_bars` default.
+
 ## Compatibility notes
 
-All 22 original package-root names are retained. The new surface contains 28
-names and is regression-tested. Existing `validate_bar()` and `validate_bars()`
+All 22 original package-root names and existing `validate_bar()` / `validate_bars()`
 call signatures and list-returning behavior remain. Legacy inter-row gap checks
 are not silently made session-aware; use the explicit audit API instead.
 
-`ValidationIssue` retains its first three constructor fields (`code`, `message`,
-`index`) and appends optional `severity` (default ERROR), `instrument`,
+In 0.2.0, `ValidationIssue` retained its first three constructor fields (`code`,
+`message`, `index`) and appended optional `severity` (default ERROR), `instrument`,
 `window_index`, and `timestamp`. Consumers that serialize dataclass fields should
 account for these additional fields; the serialized field set is not unchanged.
-Existing issue-code values remain; added codes are `NON_FINITE_VALUE`,
+Existing issue-code values remain; 0.2.0 added `NON_FINITE_VALUE`,
 `INVALID_NUMERIC_TYPE`, `OUTSIDE_WINDOW`, `MISALIGNED_BAR`, and
-`CONFLICTING_DUPLICATE`.
+`CONFLICTING_DUPLICATE`. No further issue codes are added in 0.3.0.
 
 Directly constructed `Bar` values that violate the annotated Decimal contract
-now produce validation findings before comparison instead of causing NaN-related
+produce validation findings before comparison instead of causing NaN-related
 exceptions or silently accepting non-canonical types. Use `normalize_bar` for
-numeric coercion. Source observation identity, lineage hashing, correction
-preconditions, and historical membership implementations are unchanged.
+numeric coercion. The CSV CLI deliberately preserves parseable NaN/Infinity as
+findings; `normalize_bar` continues to reject non-finite numeric inputs.
 
+Source observation identity, lineage hashing, correction preconditions,
+historical membership, and session-audit implementation are unchanged in 0.3.0.
 Patch releases should preserve these public names and documented semantics.
 Compatibility-sensitive changes require release notes and regression evidence.
 No calendar, provider SDK, persistence layer, or trading interface is implied.
