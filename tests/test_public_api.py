@@ -10,21 +10,25 @@ V0_2_ADDITIONS = {
     "WindowReport", "audit_bars",
 }
 V0_3_ADDITIONS = {"report_to_dict", "report_to_json"}
+V0_4_ADDITIONS = {
+    "IdentityMigration", "IdentityMigrationError", "build_lineage_v2", "build_observation_v2",
+    "instrument_key_v2", "plan_observation_migration",
+}
 
 
 def test_package_root_preserves_all_previous_exports() -> None:
     import marketdata_reliability as mdr
 
-    previous = V0_1_PUBLIC_API | V0_2_ADDITIONS
+    previous = V0_1_PUBLIC_API | V0_2_ADDITIONS | V0_3_ADDITIONS
     assert previous <= set(mdr.__all__)
     for name in previous:
         assert getattr(mdr, name) is not None
 
 
-def test_package_root_exports_exact_v0_3_api() -> None:
+def test_package_root_exports_exact_v0_4_api() -> None:
     import marketdata_reliability as mdr
 
     assert len(mdr.__all__) == len(set(mdr.__all__))
-    assert set(mdr.__all__) == V0_1_PUBLIC_API | V0_2_ADDITIONS | V0_3_ADDITIONS
-    for name in V0_3_ADDITIONS:
+    assert set(mdr.__all__) == V0_1_PUBLIC_API | V0_2_ADDITIONS | V0_3_ADDITIONS | V0_4_ADDITIONS
+    for name in V0_3_ADDITIONS | V0_4_ADDITIONS:
         assert callable(getattr(mdr, name))

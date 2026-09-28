@@ -9,6 +9,8 @@ from datetime import datetime, timezone
 from decimal import Decimal
 from typing import Any, Mapping
 
+from ._identity import OBSERVATION_PREFIX, observation_fingerprint
+
 
 def _require_aware(value: datetime, field_name: str) -> None:
     if value.tzinfo is None or value.utcoffset() is None:
@@ -57,6 +59,7 @@ class InstrumentId:
             raise ValueError("asset_class must not be empty")
 
     def stable_key(self) -> str:
+        """Legacy display key; use instrument_key_v2 for unambiguous identity."""
         return f"{self.market}:{self.asset_class}:{self.symbol}"
 
 
@@ -81,6 +84,16 @@ class SourceObservation:
             raise ValueError("request_id must not be empty")
         _require_aware(self.event_time, "event_time")
         _require_aware(self.observed_at, "observed_at")
+        if self.observation_id.startswith(OBSERVATION_PREFIX):
+            if not isinstance(self.instrument, InstrumentId):
+                raise TypeError("instrument must be InstrumentId")
+            expected = observation_fingerprint(
+                self.provider, self.instrument.market, self.instrument.symbol,
+                self.instrument.asset_class, _utc_iso(self.event_time), self.request_id,
+                self.payload,
+            )
+            if self.observation_id != expected:
+                raise ValueError("v2 observation_id does not match its evidence")
 
 
 def build_observation(
@@ -92,7 +105,9 @@ def build_observation(
     request_id: str,
     payload: Mapping[str, Any],
 ) -> SourceObservation:
-    """Build an immutable observation with a deterministic content fingerprint.
+    """Build legacy v1 evidence; prefer build_observation_v2 for new integrations.
+
+    V1 delimiter framing is preserved for stored-ID compatibility.
 
     `request_id` should be stable when the same source evidence is replayed. The
     observation timestamp is deliberately metadata rather than part of the fingerprint;

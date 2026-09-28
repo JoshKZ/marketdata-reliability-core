@@ -33,7 +33,8 @@ def main() -> None:
         names = archive.getnames()
         for required in ("docs/QUICKSTART.md", "docs/JSON_REPORT.md", "examples/data/bars_clean.csv",
                          "examples/data/bars_broken.csv", "examples/data/windows.csv",
-                         "tests/test_cli.py", "scripts/smoke_distribution.py"):
+                         "tests/test_cli.py", "scripts/smoke_distribution.py",
+                         "docs/IDENTITY.md", "tests/test_identity.py", "examples/migrate_identities.py"):
             assert any(name.endswith("/" + required) for name in names), required
     with tempfile.TemporaryDirectory(prefix="mdrc-smoke-") as directory:
         isolated = Path(directory)
@@ -61,7 +62,7 @@ report = m.audit_bars([bar], windows=[m.ValidationWindow(i, start, bar.end, time
 assert m.report_to_dict(report)["summary"]["valid"]
 '''.replace("EXPECTED", repr(expected_version))
         run([python, "-I", "-c", code], isolated)
-        for example in ("audit_two_sessions.py", "validate_broken_bars.py"):
+        for example in ("audit_two_sessions.py", "validate_broken_bars.py", "migrate_identities.py"):
             run([python, "-I", str(ROOT / "examples" / example)], isolated)
         for prefix in ([python, "-I", "-m", "marketdata_reliability"], [command]):
             assert expected_version in run(prefix + ["--version"], isolated).stdout

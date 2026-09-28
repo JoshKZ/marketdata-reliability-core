@@ -4,6 +4,28 @@ All notable changes will be documented in this file.
 
 ## Unreleased
 
+## 0.4.0 - 2026-09-28
+
+### Added
+
+- Opt-in v2 instrument, observation, and lineage IDs with counted, length-prefixed,
+  domain-separated framing, addressing the ambiguity recorded in issue #11.
+- V2 field/ID consistency checks on observation and lineage construction.
+- Read-only bounded observation migration plans that reject ambiguous old-to-new
+  mappings and unverifiable evidence without returning partial results.
+- Byte-level identity specification, storage/foreign-key migration guidance, a
+  synthetic migration example, and installed-wheel verification of that example.
+- Regression evidence for legacy collisions, fixed old IDs, v2 framing vectors,
+  Unicode/component boundaries, metadata semantics, and migration failure modes.
+
+### Compatibility
+
+- All 30 previous exports and record field sets remain; six exports are added.
+- Legacy builders and stored hashes are unchanged; v2 must be selected explicitly.
+- CLI, JSON schema 1.0, audit rules, and payload serialization are unchanged.
+- V2 namespaced IDs require wider storage; no automatic database or reference writes.
+
+
 ## 0.3.0 - 2026-09-22
 
 ### Added

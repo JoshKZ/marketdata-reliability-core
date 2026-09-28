@@ -7,6 +7,7 @@ from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
+from ._identity import LINEAGE_PREFIX, lineage_fingerprint
 from .models import _require_aware
 
 
@@ -40,12 +41,22 @@ class LineageRecord:
     created_at: datetime
 
     def __post_init__(self) -> None:
-        if len(self.lineage_id) != 64 or self.lineage_id != self.lineage_id.lower():
-            raise ValueError("lineage_id must be a lowercase SHA-256 hex digest")
-        try:
-            int(self.lineage_id, 16)
-        except ValueError as exc:
-            raise ValueError("lineage_id must be a lowercase SHA-256 hex digest") from exc
+        if self.lineage_id.startswith(LINEAGE_PREFIX):
+            if isinstance(self.source_observation_ids, (str, bytes)):
+                raise TypeError("source_observation_ids must contain IDs, not one string")
+            object.__setattr__(self, "source_observation_ids", tuple(self.source_observation_ids))
+            expected = lineage_fingerprint(
+                self.output_key, self.transformation, self.source_observation_ids,
+            )
+            if self.lineage_id != expected:
+                raise ValueError("v2 lineage_id does not match its fields")
+        else:
+            if len(self.lineage_id) != 64 or self.lineage_id != self.lineage_id.lower():
+                raise ValueError("lineage_id must be a lowercase SHA-256 hex digest")
+            try:
+                int(self.lineage_id, 16)
+            except ValueError as exc:
+                raise ValueError("lineage_id must be a lowercase SHA-256 hex digest") from exc
         _validate_lineage_parts(
             self.output_key,
             self.transformation,
@@ -61,7 +72,9 @@ def build_lineage(
     source_observation_ids: Iterable[str],
     created_at: datetime,
 ) -> LineageRecord:
-    """Build deterministic lineage identity for a derived record.
+    """Build legacy v1 lineage; prefer build_lineage_v2 for new integrations.
+
+    V1 delimiter framing is preserved for stored-ID compatibility.
 
     Source order is significant. Callers should supply a stable semantic order, such as
     chronological bar order. ``created_at`` is audit metadata and does not affect the

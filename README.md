@@ -10,6 +10,23 @@ before data reaches research, backtests, or dashboards.
 Python 3.11+; Apache-2.0; no third-party runtime dependencies. No API key, brokerage
 account, network feed, database, or trading strategy is required.
 
+## New in 0.4.0: versioned identity and migration safety
+
+New integrations can use `instrument_key_v2`, `build_observation_v2`, and
+`build_lineage_v2` to avoid the delimiter ambiguity tracked in issue #11. IDs use
+explicit byte lengths and versioned domains. Existing v1 outputs are preserved,
+not silently rehashed. `plan_observation_migration` verifies original evidence
+and rejects ambiguous mappings without modifying storage.
+
+```bash
+python examples/migrate_identities.py
+```
+
+Run after installation. See the [identity and migration contract](docs/IDENTITY.md)
+for longer ID fields, legacy compatibility, full-scope collision checks, and
+foreign-key migration. Hashes are not signatures or proof of market-data truth.
+The existing CSV audit remains the easiest way to try the project.
+
 ## Try a complete audit without writing Python
 
 Install from a reviewed repository checkout. This project is not published to
@@ -97,8 +114,8 @@ calendars, price comparability, and whether no-trade intervals should contain ba
 Correction checks do not atomically write a database. Hashes are not signatures.
 Historical membership is only as complete as supplied intervals. Legacy
 `validate_bars(expected_interval=...)` remains session-unaware; use `audit_bars`
-for declared session coverage. All 28 exports from 0.2.0 remain, with two report
-serializers added in 0.3.0. No core identity encoding is silently changed.
+for declared session coverage. All 30 exports from 0.3.0 remain, with six opt-in
+identity/migration exports added in 0.4.0. No legacy identity encoding is silently changed.
 
 ## Documentation and contribution
 
@@ -107,6 +124,7 @@ serializers added in 0.3.0. No core identity encoding is silently changed.
 | [Quick start and CSV contract](docs/QUICKSTART.md) | Installation, input formats, exit codes, policies, and limits. |
 | [JSON report contract](docs/JSON_REPORT.md) | Stable report fields, precision, and compatibility. |
 | [Audit semantics](docs/AUDIT.md) | Half-open grids, timezones, counts, and missing slots. |
+| [Identity and migration](docs/IDENTITY.md) | Versioned fingerprints, compatibility, and safe migration planning. |
 | [Public API](docs/PUBLIC_API.md) | Supported imports and version changes. |
 | [Maintenance evidence](docs/MAINTENANCE.md) | Reproducible checks and current project limitations. |
 | [Contributing](CONTRIBUTING.md) | Small, synthetic reproductions and contribution workflow. |
@@ -128,7 +146,8 @@ python scripts/smoke_distribution.py
 
 CI checks Linux Python 3.11/3.12/3.13 and Windows Python 3.13. It builds a source
 distribution, builds the wheel from it, then installs into a clean environment
-and exercises both CLI entry points and legacy examples outside the source tree.
+and exercises both CLI entry points, legacy examples, and the new identity
+migration example outside the source tree.
 A successful package-smoke job retains distribution candidates, checksums, and
 a synthetic JSON report as a time-limited workflow artifact. Prefer the successful
 main workflow matching the reviewed commit; development PR artifacts are candidates.

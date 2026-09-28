@@ -37,7 +37,7 @@ certificates or evidence that a persistence operation occurred.
   the same projection, sorted keys, ASCII escaping, and no non-finite JSON numbers.
   Indentation must be None or an integer between 0 and 8. No newline is appended.
 
-All 28 previous names remain; the complete root surface now contains 30 names
+At version 0.3.0, all 28 previous names remained and the root surface contained 30 names
 and is regression-tested. The new serializers do not mutate, authenticate, or
 revalidate the supplied report. See [JSON_REPORT.md](JSON_REPORT.md) for the wire
 format; do not depend on `dataclasses.asdict` as a public serialization contract.
@@ -47,6 +47,26 @@ The new `mdr-audit` executable and `python -m marketdata_reliability` share the
 formats. CSV/parser helpers are private, not new supported Python imports.
 The CLI's whole-second windows and smaller default limits do not change the
 existing Python API's timedelta support or `max_expected_bars` default.
+
+## Added in 0.4.0
+
+- `instrument_key_v2(instrument: InstrumentId) -> str` returns a namespaced key.
+- `build_observation_v2(...) -> SourceObservation` has the same keyword arguments
+  as the legacy builder but explicitly produces a v2 identity over stored bytes.
+- `build_lineage_v2(...) -> LineageRecord` has the same keyword arguments as the
+  legacy builder, using a v2 identity and a tuple snapshot of source references.
+- `plan_observation_migration(observations, *, max_records=100_000)` returns a tuple
+  of `IdentityMigration(source_index, old_id, new_id)` without writing anything.
+- `IdentityMigrationError` denotes unverifiable evidence, ambiguous legacy mappings,
+  or a migration batch exceeding its configured bound.
+
+All 30 earlier exports remain; the complete root surface now contains 36 names.
+Legacy builder outputs and record field sets remain unchanged. Construction of
+records with recognized v2 prefixes additionally checks their fingerprint and
+immutable payload/source representation. V2 IDs are longer than legacy hex-only
+IDs; storage consumers must migrate explicitly. JSON report schema and CLI
+contracts do not change. See [IDENTITY.md](IDENTITY.md) for exact byte framing,
+unchanged payload serialization, metadata exclusions, and migration limits.
 
 ## Compatibility notes
 
