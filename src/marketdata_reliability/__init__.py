@@ -7,6 +7,14 @@ from .correction import (
     CorrectionReceipt,
     verify_correction,
 )
+from .identity import (
+    IdentityMigration,
+    IdentityMigrationError,
+    build_lineage_v2,
+    build_observation_v2,
+    instrument_key_v2,
+    plan_observation_migration,
+)
 from .ingestion import (
     InMemoryObservationStore,
     InsertDisposition,
@@ -31,6 +39,8 @@ __all__ = [
     "CorrectionPreconditionFailed",
     "CorrectionProposal",
     "CorrectionReceipt",
+    "IdentityMigration",
+    "IdentityMigrationError",
     "InMemoryObservationStore",
     "InsertDisposition",
     "InstrumentId",
@@ -48,9 +58,13 @@ __all__ = [
     "WindowReport",
     "audit_bars",
     "build_lineage",
+    "build_lineage_v2",
     "build_observation",
+    "build_observation_v2",
+    "instrument_key_v2",
     "members_at",
     "normalize_bar",
+    "plan_observation_migration",
     "report_to_dict",
     "report_to_json",
     "validate_bar",

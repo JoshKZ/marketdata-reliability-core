@@ -20,6 +20,7 @@ publication is a separate future step; no package-index adoption is asserted.
 | Session-aware coverage, duplicates, timezone boundaries | `tests/test_audit.py`, `docs/AUDIT.md` |
 | Strict CSV failure handling and no-overwrite output | `tests/test_cli.py`, `docs/QUICKSTART.md` |
 | Detached, versioned JSON reports | `tests/test_reporting.py`, `docs/JSON_REPORT.md` |
+| V2 framing and non-mutating migration | `tests/test_identity.py`, `docs/IDENTITY.md`, `examples/migrate_identities.py` |
 | Preserved prior exports | `tests/test_public_api.py` |
 | Installed distribution works outside the checkout | `scripts/smoke_distribution.py` |
 | No runtime third-party dependency | `pyproject.toml` and no-dependency wheel installation in CI |
@@ -55,6 +56,7 @@ are not cryptographic publisher attestations.
 
 Do not add broker integration, quote models, recovery orchestration, or AI-based
 correctness merely to increase the feature count. New dependencies and interfaces
-need a concrete public use case. Existing hashing and provenance primitives are
-not cryptographic authentication, and require a separate compatibility-aware
-review before their identity encoding is changed.
+need a concrete public use case. Version 0.4.0 addresses issue #11 through opt-in v2 framing and migration checks;
+legacy hashes remain supported with their documented limitations. Tests reproduce
+the original ambiguity before checking the new behavior. Hashes and provenance
+primitives are not cryptographic authentication.

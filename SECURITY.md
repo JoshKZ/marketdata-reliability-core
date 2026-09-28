@@ -46,3 +46,17 @@ There are no third-party runtime dependencies. Build/development tools and GitHu
 Actions still form a software supply chain. CI actions are commit-pinned, use
 read-only repository permissions, and do not persist checkout credentials.
 Automated checks and agent-assisted review are not an independent security audit.
+
+## Identity and migration boundaries
+
+Use the opt-in v2 builders for unambiguous component framing in new integrations.
+Legacy builders retain their delimiter-based outputs for stored-ID compatibility.
+The weakness tracked in issue #11 is a framing ambiguity, not a SHA-256 break.
+V2 constructor checks verify field/ID consistency, not authenticity, authorization,
+source existence, or market truth. Exact byte framing is documented in IDENTITY.md.
+
+The migration planner is read-only and checks only supplied evidence. Reconcile
+mappings across the full migration scope, review foreign keys and wider ID columns,
+and use your storage system's backup/transaction mechanisms before applying changes.
+It does not repair already-lost evidence or silently change lineage references.
+See [the migration contract](docs/IDENTITY.md). No independent audit is claimed.
